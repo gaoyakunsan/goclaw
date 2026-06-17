@@ -1,0 +1,36 @@
+{
+    "Logging": {
+        "LogLevel": {
+            "Default": "Information",
+            "Microsoft": "Warning",
+            "Microsoft.Hosting.Lifetime": "Information"
+        }
+    },
+    "SignServerUrl": "https://sign.lagrangecore.org/api/sign/30366",
+    "SignProxyUrl": "",
+    "MusicSignServerUrl": "",
+    "Account": {
+        "Uin": 0,
+        "Protocol": "Linux",
+        "AutoReconnect": true,
+        "GetOptimumServer": true
+    },
+    "Message": {
+        "IgnoreSelf": true,
+        "StringPost": false
+    },
+    "QrCode": {
+        "ConsoleCompatibilityMode": false
+    },
+    "Implementations": [
+        {
+            "Type": "ReverseWebSocket",
+            "Host": "goclaw-goclaw-1",
+            "Port": 18790,
+            "Suffix": "/v1/onebot/qq/qq-main",
+            "ReconnectInterval": 5000,
+            "HeartBeatInterval": 5000,
+            "AccessToken": "72b353e04bd4a8390c56911d6088c566"
+        }
+    ]
+}

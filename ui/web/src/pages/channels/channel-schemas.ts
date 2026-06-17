@@ -85,6 +85,12 @@ export const credentialsSchema: Record<string, FieldDef[]> = {
   // lives on the bitrix_portals row, not the channel instance. Authorize the portal
   // once via /bitrix24/install, then create channel instances against that portal.
   bitrix24: [],
+  // QQ (OneBot 11) credentials. access_token authenticates the OneBot WebSocket;
+  // self_id (the logged-in QQ number) is used to filter self-messages and detect @bot.
+  qq: [
+    { key: "access_token", label: "Access Token", type: "password", required: false, help: "OneBot bearer token. Leave empty only on fully internal deployments — the reverse-WS endpoint accepts any connection when blank." },
+    { key: "self_id", label: "Bot QQ Number (self_id)", type: "text", required: false, placeholder: "10001", help: "QQ number the OneBot implementation is logged in as. Recommended — used to ignore the bot's own messages and detect @mentions. Auto-detected from get_login_info if left blank." },
+  ],
 };
 
 // --- Pancake platform options ---
@@ -262,6 +268,22 @@ export const configSchema: Record<string, FieldDef[]> = {
     { key: "block_reply", label: "Block Reply", type: "select", options: blockReplyOptions, defaultValue: "inherit", help: "Deliver intermediate text during tool iterations." },
     { key: "mcp_server_name", label: "MCP Server Name", type: "text", advanced: true, placeholder: "bitrix24-prod", help: "Optional — name from mcp_servers table. Must be set together with MCP Base URL to enable per-user MCP credential auto-onboard. Leave both empty to disable." },
     { key: "mcp_base_url", label: "MCP Base URL", type: "text", advanced: true, placeholder: "https://mcp.example.com", help: "Optional — HTTPS root of the partner MCP server. Channel POSTs {mcp_base_url}/api/auto-onboard to mint per-user credentials on first-sight. The MCP server authenticates each call via the caller's Bitrix access_token, so no admin secret is required." },
+  ],
+  qq: [
+    { key: "direction", label: "Connection Direction", type: "select", options: [
+      { value: "reverse", label: "Reverse (implementation connects in — recommended)" },
+      { value: "forward", label: "Forward (gateway dials out)" },
+    ], defaultValue: "reverse", help: "Reverse mode: the OneBot implementation (NapCat/Lagrange/LLOneBot) connects to this gateway's reverse-WS endpoint. Forward mode: the gateway dials the implementation's ws:// endpoint." },
+    { key: "endpoint", label: "Forward Endpoint", type: "text", placeholder: "ws://127.0.0.1:3001", help: "Forward mode only — the implementation's WebSocket URL.", showWhen: { key: "direction", value: "forward" } },
+    { key: "reverse_path", label: "Reverse WS Path Prefix", type: "text", defaultValue: "/v1/onebot/qq", advanced: true, help: "Reverse mode only — the implementation connects to {reverse_path}/{instance_name}, e.g. /v1/onebot/qq/qq-main.", showWhen: { key: "direction", value: "reverse" } },
+    { key: "dm_policy", label: "DM Policy", type: "select", options: dmPolicyOptions, defaultValue: "pairing" },
+    { key: "group_policy", label: "Group Policy", type: "select", options: groupPolicyOptions, defaultValue: "pairing" },
+    { key: "require_mention", label: "Require @mention in groups", type: "boolean", defaultValue: true, help: "Only respond in groups when the bot is explicitly @mentioned." },
+    { key: "history_limit", label: "Group History Limit", type: "number", defaultValue: 50, help: "Max pending group messages for context (0 = disabled)" },
+    { key: "chunk_limit", label: "Text Chunk Limit", type: "number", defaultValue: 4500, advanced: true, help: "Max characters per outbound message (QQ ~4500 char limit)." },
+    { key: "media_max_bytes", label: "Max Media Size (bytes)", type: "number", defaultValue: 20971520, advanced: true, help: "Max inbound media download size in bytes. Default 20 MB = 20971520." },
+    { key: "allow_from", label: "Allowed Users / Groups", type: "tags", help: "QQ numbers (private) or group numbers, one per line or comma-separated" },
+    { key: "block_reply", label: "Block Reply", type: "select", options: blockReplyOptions, defaultValue: "inherit", help: "Deliver intermediate text during tool iterations" },
   ],
 };
 

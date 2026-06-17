@@ -26,6 +26,11 @@ FROM embedui-${ENABLE_EMBEDUI} AS web-dist
 # ── Stage 1: Build Go ──
 FROM golang:1.26-bookworm AS builder
 
+# GOPROXY: defaults to the standard proxy. Override with --build-arg in
+# regions where proxy.golang.org is blocked (e.g. GOPROXY=https://goproxy.cn,direct).
+ARG GOPROXY=https://proxy.golang.org,direct
+ENV GOPROXY=${GOPROXY}
+
 WORKDIR /src
 
 # Cache dependencies

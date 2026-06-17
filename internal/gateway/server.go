@@ -18,6 +18,7 @@ import (
 
 	"github.com/nextlevelbuilder/goclaw/internal/agent"
 	"github.com/nextlevelbuilder/goclaw/internal/bus"
+	"github.com/nextlevelbuilder/goclaw/internal/channels"
 	"github.com/nextlevelbuilder/goclaw/internal/config"
 	httpapi "github.com/nextlevelbuilder/goclaw/internal/http"
 	mcpbridge "github.com/nextlevelbuilder/goclaw/internal/mcp"
@@ -70,6 +71,17 @@ type Server struct {
 	httpServer *http.Server
 	mux        *http.ServeMux
 
+	// webhookProxy routes inbound webhook requests to the channel handler
+	// currently registered for each path. First-seen paths are mounted on the
+	// mux once (each pointing at this single proxy); channel-instance reloads
+	// atomically swap the route table so endpoints created at runtime are
+	// served without a restart and without re-registering patterns (which
+	// http.ServeMux panics on for duplicates). whMounted + whMu guard the
+	// check-then-act of first registration against concurrent reloads.
+	webhookProxy *webhookProxy
+	whMounted    map[string]bool
+	whMu         sync.Mutex
+
 	// publicURLSnapshot remembers the gateway's externally reachable base URL
 	// learned from inbound HTTP requests. Reset to a fresh snapshot per Server
 	// so test servers don't share state. Read by RPC methods that need to
@@ -90,6 +102,8 @@ func NewServer(cfg *config.Config, eventPub bus.EventPublisher, agents *agent.Ro
 		agents:            agents,
 		sessions:          sess,
 		clients:           make(map[string]*Client),
+		webhookProxy:      newWebhookProxy(),
+		whMounted:         make(map[string]bool),
 		startedAt:         time.Now(),
 		publicURLSnapshot: NewPublicURLSnapshot(),
 	}
@@ -231,6 +245,63 @@ func (s *Server) BuildMux() *http.ServeMux {
 
 	s.mux = mux
 	return mux
+}
+
+// webhookProxy is a single http.Handler mounted on every webhook path in the
+// main mux. It dispatches each request to the channel handler currently
+// registered for that path via an atomically-replaceable table, so channel
+// instances created (or removed) at runtime are picked up without touching
+// the http.ServeMux patterns again (re-registering a pattern panics).
+type webhookProxy struct {
+	mu     sync.RWMutex
+	routes map[string]http.Handler // path -> channel handler (current snapshot)
+}
+
+func newWebhookProxy() *webhookProxy {
+	return &webhookProxy{routes: make(map[string]http.Handler)}
+}
+
+// set atomically replaces the route table. Called after each channel-instance
+// reload with the latest WebhookHandlers() snapshot.
+func (p *webhookProxy) set(routes map[string]http.Handler) {
+	p.mu.Lock()
+	p.routes = routes
+	p.mu.Unlock()
+}
+
+func (p *webhookProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	p.mu.RLock()
+	h, ok := p.routes[r.URL.Path]
+	p.mu.RUnlock()
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	h.ServeHTTP(w, r)
+}
+
+// SyncWebhooks ensures every webhook route is served by the gateway. Paths
+// seen for the first time are registered once on the mux (each pointing at the
+// shared webhookProxy); the proxy's route table is then atomically updated to
+// the latest set of channel handlers. Safe to call after Start() and after each
+// channel-instance reload — it neither re-registers existing patterns (which
+// would panic) nor requires a mux rebuild.
+func (s *Server) SyncWebhooks(routes []channels.WebhookRoute) {
+	s.whMu.Lock()
+	defer s.whMu.Unlock()
+	table := make(map[string]http.Handler, len(routes))
+	for _, r := range routes {
+		if r.Path == "" || r.Handler == nil {
+			continue
+		}
+		table[r.Path] = r.Handler
+		if !s.whMounted[r.Path] {
+			s.mux.Handle(r.Path, s.webhookProxy)
+			s.whMounted[r.Path] = true
+			slog.Info("webhook route mounted on gateway", "path", r.Path)
+		}
+	}
+	s.webhookProxy.set(table)
 }
 
 // bridgeContextMiddleware extracts X-Agent-ID, X-User-ID, and X-Workspace headers

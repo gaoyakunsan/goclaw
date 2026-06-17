@@ -1,5 +1,26 @@
 package config
 
+// QQConfig configures a QQ (OneBot 11) channel instance. Non-secret only;
+// access_token / self_id live in credentials (AES-256-GCM encrypted).
+//
+// QQ is a pure DB-instance channel (like Bitrix24/Pancake/Facebook): the
+// instance is created via the HTTP/WS channel_instances API, not from
+// config.json. QQConfig therefore exists only as the New() parameter type —
+// it is intentionally NOT a field on ChannelsConfig.
+type QQConfig struct {
+	Direction      string   `json:"direction,omitempty"`       // "reverse" (default) | "forward"
+	Endpoint       string   `json:"endpoint,omitempty"`        // forward mode ws://host:port
+	ReversePath    string   `json:"reverse_path,omitempty"`    // reverse WS mount prefix, default "/v1/onebot/qq"
+	DMPolicy       string   `json:"dm_policy,omitempty"`       // "pairing" (default) | "open" | "allowlist" | "disabled"
+	GroupPolicy    string   `json:"group_policy,omitempty"`    // "pairing" (default) | "open" | "allowlist" | "disabled"
+	AllowFrom      []string `json:"allow_from,omitempty"`      // QQ号/群号白名单
+	RequireMention *bool    `json:"require_mention,omitempty"` // 群@提及门控 (默认 true)
+	HistoryLimit   int      `json:"history_limit,omitempty"`   // 群待处理消息上限 (默认 50)
+	BlockReply     *bool    `json:"block_reply,omitempty"`     // 覆盖 gateway block_reply (nil=继承)
+	MediaMaxBytes  int64    `json:"media_max_bytes,omitempty"` // 媒体下载上限 (默认 20MB)
+	ChunkLimit     int      `json:"chunk_limit,omitempty"`     // 单条消息分片长度 (默认 4500)
+}
+
 // PendingCompactionConfig configures LLM-based compaction of pending group messages.
 // When a group accumulates more than Threshold pending messages, older messages are
 // summarized by an LLM and replaced with a compact summary, keeping KeepRecent raw messages.

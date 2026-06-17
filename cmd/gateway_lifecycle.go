@@ -243,12 +243,10 @@ func (d *gatewayDeps) runLifecycle(
 	// Compiled via build tags: `go build -tags tsnet` to enable.
 	mux := d.server.BuildMux()
 
-	// Mount channel webhook handlers on the main mux (e.g. Feishu /feishu/events).
-	// This allows webhook-based channels to share the main server port.
-	for _, route := range d.channelMgr.WebhookHandlers() {
-		mux.Handle(route.Path, route.Handler)
-		slog.Info("webhook route mounted on gateway", "path", route.Path)
-	}
+	// Mount channel webhook handlers via the server's webhook proxy. The proxy
+	// supports runtime reload, so channel instances created after startup get
+	// their endpoints mounted without a restart (see SyncWebhooks / reload hook).
+	d.server.SyncWebhooks(d.channelMgr.WebhookHandlers())
 
 	tsCleanup := initTailscale(ctx, d.cfg, mux)
 	if tsCleanup != nil {

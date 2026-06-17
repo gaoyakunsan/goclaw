@@ -28,6 +28,7 @@ var mediaCapableTypes = map[string]bool{
 	TypeZaloPersonal: true,
 	TypePancake:      true,
 	TypeFacebook:     true,
+	TypeQQ:           true,
 }
 
 // IsMediaCapable reports whether the given channel platform type supports media attachments.

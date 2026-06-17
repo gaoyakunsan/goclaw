@@ -1,0 +1,32 @@
+{
+  "network": {
+    "httpServers": [],
+    "httpSseServers": [],
+    "httpClients": [],
+    "websocketServers": [],
+    "websocketClients": [
+      {
+        "name": "goclaw-qq-main",
+        "enable": true,
+        "url": "ws://goclaw-goclaw-1:18790/v1/onebot/qq/qq-main",
+        "messagePostFormat": "array",
+        "reportSelfMessage": false,
+        "token": "72b353e04bd4a8390c56911d6088c566",
+        "debug": false,
+        "heartInterval": 30000,
+        "reconnectInterval": 5000
+      }
+    ],
+    "plugins": []
+  },
+  "musicSignUrl": "",
+  "enableLocalFile2Url": false,
+  "parseMultMsg": false,
+  "imageDownloadProxy": "",
+  "timeout": {
+    "baseTimeout": 10000,
+    "uploadSpeedKBps": 256,
+    "downloadSpeedKBps": 256,
+    "maxTimeout": 1800000
+  }
+}

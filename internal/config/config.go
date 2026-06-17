@@ -133,7 +133,7 @@ type DatabaseConfig struct {
 type SkillsConfig struct {
 	StorageDir      string                  `json:"storage_dir,omitempty"`        // directory for skill content (default: dataDir/skills-store/)
 	MaxUploadSizeMB int                     `json:"max_upload_size_mb,omitempty"` // per-file ZIP upload limit
-	SlashCommands   SkillSlashCommandConfig `json:"slash_commands,omitempty"`
+	SlashCommands   SkillSlashCommandConfig `json:"slash_commands"`
 }
 
 // SkillSlashCommandConfig controls explicit slash-command skill activation.

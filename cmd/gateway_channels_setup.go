@@ -196,7 +196,13 @@ func wireChannelEventSubscribers(
 			if !ok || payload.Kind != bus.CacheKindChannelInstances {
 				return
 			}
-			go instanceLoader.Reload(context.Background())
+			go func() {
+				instanceLoader.Reload(context.Background())
+				// Re-sync webhook routes so channel instances created or
+				// updated at runtime get their endpoints mounted without a
+				// gateway restart (hot-reload of webhook channels).
+				server.SyncWebhooks(channelMgr.WebhookHandlers())
+			}()
 		})
 	}
 
