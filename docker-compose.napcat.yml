@@ -1,0 +1,43 @@
+# NapCat (OneBot 11) — GoClaw QQ 渠道的 QQ 协议端。
+#
+# GoClaw QQ 渠道是 OneBot 11 客户端，默认反向 WebSocket：在主网关 18790
+# 挂载 /v1/onebot/qq/{实例名}，等待协议端主动连入。NapCat 登录真实 QQ 账号，
+# 通过反向 WS 把事件上报给 GoClaw，并通过同一条 WS 接收回复动作。
+#
+# 前置：先启动 GoClaw 主栈（它会创建 goclaw-net 网络和 goclaw-goclaw-1 容器）：
+#   docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d
+#
+# 再启动本文件（napcat 必须在 GoClaw 之后启动，否则连不上 goclaw-goclaw-1）：
+#   docker compose -f docker-compose.napcat.yml up -d
+#
+# 首次登录：浏览器打开 http://localhost:6099/webui （默认 token: napcat）扫码登录 QQ。
+# 登录态持久化在 ./ntqq 卷，重启无需重扫（约每 30 天需重登一次）。
+#
+# 配套：仓库自带的 napcat-onebot11.json 已配好反向 WS（指向
+#   ws://goclaw-goclaw-1:18790/v1/onebot/qq/qq-main，token 见文件）。
+#   在 GoClaw 创建 name=qq-main 的 QQ 渠道实例，access_token 与该文件一致即可。
+
+services:
+  napcat:
+    image: mlikiowa/napcat-docker:latest
+    container_name: napcat
+    restart: unless-stopped
+    environment:
+      # Linux 用宿主用户 uid/gid（NAPCAT_UID=$(id -u) NAPCAT_GID=$(id -g)）；
+      # Windows Docker Desktop 一般 1000 或 0 都可用。
+      - NAPCAT_UID=${NAPCAT_UID:-1000}
+      - NAPCAT_GID=${NAPCAT_GID:-1000}
+    ports:
+      # WebUI：登录扫码 + onebot 配置。OneBot 流量是 napcat 主动出站，无需为它开任何端口。
+      # 仅本机访问；切勿暴露公网（默认 token 为 napcat，登录后请修改）。
+      - "6099:6099"
+    volumes:
+      - ./napcat/config:/app/napcat/config   # onebot11_<QQ>.json 放这里
+      - ./ntqq:/app/.config/QQ               # QQ 登录态（避免每次重启重扫）
+    networks:
+      - goclaw-net
+
+networks:
+  goclaw-net:
+    external: true
+    name: goclaw-net
